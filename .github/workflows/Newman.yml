@@ -23,7 +23,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18' # Downgraded to v18 for better compatibility
+          node-version: '18'
 
       # Install Newman, reporters, and allure-commandline
       - name: Install Newman and reporters
@@ -32,6 +32,13 @@ jobs:
           npm install -g newman-reporter-htmlextra
           npm install -g newman-reporter-allure
           npm install -g allure-commandline
+        continue-on-error: false
+
+      # Verify installations
+      - name: Verify installations
+        run: |
+          newman --version
+          allure --version
         continue-on-error: false
 
       # Create directory for test results
@@ -48,12 +55,22 @@ jobs:
             --reporter-allure-export testResults/allure-results
         continue-on-error: false
 
-      # Generate Allure report
+      # Debug: Check if allure-results directory has files
+      - name: Debug allure-results
+        run: |
+          ls -la testResults/allure-results || echo "No files found in testResults/allure-results"
+        continue-on-error: true
+
+      # Generate Allure report if allure-results exists
       - name: Generate Allure report
         if: always()
         run: |
-          allure generate testResults/allure-results -o testResults/allure-report
-        continue-on-error: false
+          if [ -d "testResults/allure-results" ] && [ "$(ls -A testResults/allure-results)" ]; then
+            allure generate testResults/allure-results -o testResults/allure-report
+          else
+            echo "No Allure results to generate report from."
+          fi
+        continue-on-error: true
 
       # Upload HTML test results as artifacts
       - name: Upload HTML test report
@@ -63,8 +80,9 @@ jobs:
           name: Postman-HTML-Report
           path: testResults/htmlreport.html
           retention-days: 7
+        continue-on-error: true
 
-      # Upload raw Allure results as artifacts
+      # Upload raw Allure results as artifacts if they exist
       - name: Upload raw Allure results
         if: always()
         uses: actions/upload-artifact@v4
@@ -72,8 +90,10 @@ jobs:
           name: Allure-Results
           path: testResults/allure-results/
           retention-days: 7
+          if-no-files-found: ignore # Prevents failure if directory is empty
+        continue-on-error: true
 
-      # Upload generated Allure report as artifacts
+      # Upload generated Allure report as artifacts if it exists
       - name: Upload Allure report
         if: always()
         uses: actions/upload-artifact@v4
@@ -81,3 +101,5 @@ jobs:
           name: Allure-Report
           path: testResults/allure-report/
           retention-days: 7
+          if-no-files-found: ignore # Prevents failure if directory is empty
+        continue-on-error: true
