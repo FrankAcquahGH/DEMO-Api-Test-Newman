@@ -1,0 +1,49 @@
+name: Run Postman Collection
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+    steps:
+      # Check out the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Install Newman and reporter
+      - name: Install Newman
+        run: |
+          npm install -g newman
+          npm install -g newman-reporter-htmlextra
+
+      # Create directory for test results
+      - name: Make directory for results
+        run: mkdir -p testResults
+
+      # Run Postman collection
+      - name: Run Postman Collection
+        run: |
+          newman run Regression testing.postman_collection.json \
+          -r htmlextra,cli \
+          --reporter-htmlextra-export testResults/htmlreport.html \
+          --reporter-htmlextra-darkTheme
+
+      # Upload test results as artifacts
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: Postman-Test-Reports
+          path: testResults/
