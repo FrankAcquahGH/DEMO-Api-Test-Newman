@@ -23,14 +23,15 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18' # Downgraded to v18 for better compatibility
 
-      # Install Newman and reporters
+      # Install Newman, reporters, and allure-commandline
       - name: Install Newman and reporters
         run: |
           npm install -g newman
           npm install -g newman-reporter-htmlextra
           npm install -g newman-reporter-allure
+          npm install -g allure-commandline
         continue-on-error: false
 
       # Create directory for test results
@@ -51,7 +52,7 @@ jobs:
       - name: Generate Allure report
         if: always()
         run: |
-          npx allure generate testResults/allure-results -o testResults/allure-report --clean
+          allure generate testResults/allure-results -o testResults/allure-report
         continue-on-error: false
 
       # Upload HTML test results as artifacts
