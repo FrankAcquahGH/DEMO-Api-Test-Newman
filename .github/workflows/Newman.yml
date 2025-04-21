@@ -1,4 +1,4 @@
-name: Run Postman Collection
+name: Run Postman Collection with Newman
 
 on:
   push:
@@ -7,6 +7,8 @@ on:
   pull_request:
     branches:
       - main
+  schedule:
+    - cron: '0 15 * * *' # Runs daily at 3:00 PM GMT
   workflow_dispatch: # Allows manual trigger
 
 jobs:
@@ -23,27 +25,58 @@ jobs:
         with:
           node-version: '20'
 
-      # Install Newman and reporter
-      - name: Install Newman
+      # Install Newman and reporters
+      - name: Install Newman and reporters
         run: |
           npm install -g newman
           npm install -g newman-reporter-htmlextra
+          npm install -g newman-reporter-allure
+        continue-on-error: false
 
       # Create directory for test results
       - name: Make directory for results
         run: mkdir -p testResults
 
-      # Run Postman collection
+      # Run Postman collection with Newman
       - name: Run Postman Collection
         run: |
           newman run Regression-testing.postman_collection.json \
-          -r htmlextra,cli \
-          --reporter-htmlextra-export testResults/htmlreport.html \
-          --reporter-htmlextra-darkTheme
+            -r htmlextra,allure,cli \
+            --reporter-htmlextra-export testResults/htmlreport.html \
+            --reporter-htmlextra-darkTheme \
+            --reporter-allure-export testResults/allure-results
+        continue-on-error: false
 
-      # Upload test results as artifacts
-      - name: Upload test results
+      # Generate Allure report
+      - name: Generate Allure report
+        if: always()
+        run: |
+          npx allure generate testResults/allure-results -o testResults/allure-report --clean
+        continue-on-error: false
+
+      # Upload HTML test results as artifacts
+      - name: Upload HTML test report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Postman-Test-Reports
-          path: testResults/
+          name: Postman-HTML-Report
+          path: testResults/htmlreport.html
+          retention-days: 7
+
+      # Upload raw Allure results as artifacts
+      - name: Upload raw Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Allure-Results
+          path: testResults/allure-results/
+          retention-days: 7
+
+      # Upload generated Allure report as artifacts
+      - name: Upload Allure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Allure-Report
+          path: testResults/allure-report/
+          retention-days: 7
